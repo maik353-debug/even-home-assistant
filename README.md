@@ -1,4 +1,4 @@
-# Even Hub G2 Smart Lamp Control
+# Even Home Assistant
 
 TypeScript app for Even Realities G2 to control smart lamps in the same LAN via HTTP.
 
