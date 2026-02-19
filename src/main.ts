@@ -267,6 +267,11 @@ function getRoomCommands(room: Room | undefined): LampCommand[] {
   }));
 }
 
+function isSceneRoom(room: Room | undefined): boolean {
+  if (!room || room.lamps.length === 0) return false;
+  return room.lamps.every((lamp) => getLampDomain(lamp) === "scene");
+}
+
 function isLampUnavailable(lamp: Lamp): boolean {
   return getLampStateLabel(state, lamp) === "UNAVAILABLE";
 }
@@ -306,9 +311,11 @@ function getHeaderText(): string {
   if (!hasRooms(state)) return emptyHeaderStatus;
   if (state.glassesMenuLevel === "rooms") return t("header.rooms.available", { count: state.rooms.length });
   if (state.glassesMenuLevel === "lamps") return t("header.lamps.forRoom", { room: getSelectedRoom(state)?.label ?? "-" });
+  const selectedLamp = getSelectedLamp(state);
+  if (selectedLamp && getLampDomain(selectedLamp) === "scene") return t("header.commands.forScene", { lamp: selectedLamp.label });
   return t("header.commands.forLamp", {
     state: getSelectedLampStateLabel(state),
-    lamp: getSelectedLamp(state)?.label ?? "-",
+    lamp: selectedLamp?.label ?? "-",
   });
 }
 
@@ -680,7 +687,7 @@ function getMenuItems(): string[] {
     state.rooms,
     state.glassesMenuLevel,
     selectedRoom,
-    (lamp) => getLampStateLabel(state, lamp),
+    (lamp) => (getLampDomain(lamp) === "scene" ? "" : getLampStateLabel(state, lamp)),
     getEntityCommands(selectedLamp).map((x) => x.label),
     getRoomCommands(selectedRoom).map((x) => x.label),
     t("menu.refreshHa")
@@ -918,7 +925,18 @@ async function handleGlassesSelection(rawIndex: number, itemName: string): Promi
   if (rawIndex < 0 && !itemName) return;
   const normalizedItemName = itemName === "-" ? "" : itemName;
   const menuItems = getMenuItems();
-  const idx = resolveMenuIndexFromEvent(rawIndex, normalizedItemName, menuItems);
+  let idx = resolveMenuIndexFromEvent(rawIndex, normalizedItemName, menuItems);
+  // Some runtimes emit 1-based indices without item names. In root level this can
+  // mis-resolve the last room (e.g. "Scenes") as the trailing refresh action.
+  if (
+    state.glassesMenuLevel === "rooms" &&
+    !normalizedItemName &&
+    idx === menuItems.length - 1 &&
+    rawIndex - 1 >= 0 &&
+    rawIndex - 1 < state.rooms.length
+  ) {
+    idx = rawIndex - 1;
+  }
   writeLog(`resolved menu index: raw=${rawIndex}, resolved=${idx}, level=${state.glassesMenuLevel}`);
   if (idx < 0) return;
 
@@ -937,7 +955,7 @@ async function handleGlassesSelection(rawIndex: number, itemName: string): Promi
     state.selectedLampId = room.lamps[0]?.id ?? "";
     syncSelectors();
     saveAppState();
-    if (room.lamps.length <= 1) {
+    if (room.lamps.length <= 1 && !isSceneRoom(room)) {
       state.glassesMenuLevel = "commands";
       suppressCommandSelectionUntilTs = Date.now() + 800;
       startStateSync();
@@ -1035,6 +1053,7 @@ async function loadRoomsFromHomeAssistantAction(): Promise<void> {
     localStorage.setItem(INCLUDE_SCENES_STORAGE_KEY, dom.includeScenesEl.checked ? "1" : "0");
     const importedRooms = await loadRoomsFromHomeAssistantApi(getBaseUrl(), token, useHaProxy, {
       includeScenes: dom.includeScenesEl.checked,
+      scenesGroupLabel: t("menu.scenesGroup"),
     });
     applyRooms(importedRooms, { roomId: state.selectedRoomId, lampId: state.selectedLampId });
     haReachability = "ok";

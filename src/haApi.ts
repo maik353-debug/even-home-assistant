@@ -1,5 +1,7 @@
 import type { EntityDomain, Lamp, LampCommand, Room } from "./models";
 
+const SCENES_GROUP_TOKEN = "__EVEN_SCENES_GROUP__";
+
 export function haApiUrl(baseUrl: string, isLocalDev: boolean, path: string): string {
   if (isLocalDev) return `/ha${path}`;
   return `${baseUrl}${path}`;
@@ -74,9 +76,10 @@ export async function loadRoomsFromHomeAssistant(
   baseUrl: string,
   token: string,
   isLocalDev: boolean,
-  options?: { includeScenes?: boolean }
+  options?: { includeScenes?: boolean; scenesGroupLabel?: string }
 ): Promise<Room[]> {
   const includeScenes = options?.includeScenes === true;
+  const scenesGroupLabel = options?.scenesGroupLabel?.trim() || "Scenes";
   const blocks = [
     `{% for e in states.light %}`,
     `{% if e.attributes.entity_id is not defined %}`,
@@ -93,14 +96,12 @@ export async function loadRoomsFromHomeAssistant(
   if (includeScenes) {
     blocks.push(
       `{% for e in states.scene %}`,
-      `{% if e.attributes.entity_id is not defined %}`,
       `{% set ns.items = ns.items + [ {
   "entity_id": e.entity_id,
   "name": e.name,
-  "area": area_name(e.entity_id) if area_name(e.entity_id) else "Szenen",
+  "area": "${SCENES_GROUP_TOKEN}",
   "state": e.state
 } ] %}`,
-      `{% endif %}`,
       `{% endfor %}`
     );
   }
@@ -130,7 +131,7 @@ ${blocks.join("\n")}
     throw new Error("Unexpected template response");
   }
 
-  const byArea = new Map<string, Lamp[]>();
+  const byArea = new Map<string, { label: string; lamps: Lamp[]; isScenesGroup: boolean }>();
   for (const item of parsed) {
     if (!item || typeof item !== "object") continue;
     const row = item as { entity_id?: unknown; name?: unknown; area?: unknown; state?: unknown };
@@ -138,27 +139,34 @@ ${blocks.join("\n")}
     const domainRaw = row.entity_id.split(".")[0];
     const domain: EntityDomain =
       domainRaw === "light" || domainRaw === "scene" ? domainRaw : "light";
-    const areaLabel = typeof row.area === "string" && row.area.trim() ? row.area.trim() : "Ohne Raum";
+    const areaLabelRaw = typeof row.area === "string" && row.area.trim() ? row.area.trim() : "Ohne Raum";
+    const isScenesGroup = areaLabelRaw === SCENES_GROUP_TOKEN;
+    const areaKey = isScenesGroup ? SCENES_GROUP_TOKEN : areaLabelRaw;
+    const areaLabel = isScenesGroup ? scenesGroupLabel : areaLabelRaw;
     const rawState = String(row.state ?? "unknown").toLowerCase();
     const normalizedState =
       rawState === "on" ? "ON" : rawState === "off" ? "OFF" : rawState === "unavailable" ? "UNAVAILABLE" : rawState.toUpperCase();
-    const lamps = byArea.get(areaLabel) ?? [];
-    lamps.push({
+    const bucket = byArea.get(areaKey) ?? { label: areaLabel, lamps: [], isScenesGroup };
+    bucket.lamps.push({
       id: normalizeId(row.entity_id),
       label: row.name,
       pathPrefix: row.entity_id,
       domain,
       initialState: normalizedState,
     });
-    byArea.set(areaLabel, lamps);
+    byArea.set(areaKey, bucket);
   }
 
-  return Array.from(byArea.entries())
-    .sort((a, b) => a[0].localeCompare(b[0], "de"))
-    .map(([label, lamps]) => ({
-      id: normalizeId(label),
-      label,
-      lamps: lamps
+  return Array.from(byArea.values())
+    .sort((a, b) => {
+      if (a.isScenesGroup && !b.isScenesGroup) return 1;
+      if (!a.isScenesGroup && b.isScenesGroup) return -1;
+      return a.label.localeCompare(b.label, "de");
+    })
+    .map((bucket) => ({
+      id: bucket.isScenesGroup ? "scenes_group" : normalizeId(bucket.label),
+      label: bucket.label,
+      lamps: bucket.lamps
         .sort((a, b) => a.label.localeCompare(b.label, "de"))
         .filter((lamp) => lamp.pathPrefix.trim() !== ""),
     }))

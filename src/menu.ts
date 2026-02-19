@@ -22,7 +22,10 @@ export function getGlassesMenuItems(
   if (level === "lamps") {
     if (!selectedRoom) return [t("menu.noLampsInHa")];
     const roomActions = roomCommandLabels.map((x) => `[${x}]`);
-    const lampItems = selectedRoom.lamps.map((x) => `${x.label} [${lampStateLabel(x)}]`);
+    const lampItems = selectedRoom.lamps.map((x) => {
+      const state = lampStateLabel(x).trim();
+      return state ? `${x.label} [${state}]` : x.label;
+    });
     return [...roomActions, ...lampItems];
   }
   return commandLabels;
