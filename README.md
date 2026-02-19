@@ -11,6 +11,7 @@ The app runs as an Even Hub web app, renders a menu on-device, and controls Home
 - [Project Structure](#project-structure)
 - [Requirements](#requirements)
 - [Quick Start](#quick-start)
+- [UI Workflow (Screenshots)](#ui-workflow-screenshots)
 - [Configuration](#configuration)
 - [Run Modes](#run-modes)
 - [Packaging and Deployment (.ehpk)](#packaging-and-deployment-ehpk)
@@ -83,6 +84,24 @@ Then in the app:
 2. Click `Verbindung testen`
 3. Click `Load rooms from HA`
 4. Click `Deploy to glasses`
+
+## UI Workflow (Screenshots)
+
+1. Web controls: configure Home Assistant, test connection, load rooms, and deploy to glasses.
+
+![Web controls UI (dark theme)](public/workflow-01-web-ui-dark.png)
+
+2. Glasses root menu: pick a room or refresh Home Assistant data.
+
+![Glasses rooms menu](public/workflow-02-glasses-rooms.png)
+
+3. Room level: use room-wide actions or choose a lamp.
+
+![Glasses lamps menu](public/workflow-03-glasses-lamps.png)
+
+4. Command level: execute the lamp command (on/off/toggle/dim).
+
+![Glasses commands menu](public/workflow-04-glasses-commands.png)
 
 ## Configuration
 
