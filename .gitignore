@@ -1,0 +1,7 @@
+node_modules
+dist
+*.ehpk
+.env.local
+.env.*.local
+.DS_Store
+Thumbs.db

@@ -1,0 +1,151 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  line-height: 1.4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f4f6fb;
+  color: #1b2433;
+}
+
+#app {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #dde3ee;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(19, 27, 44, 0.06);
+}
+
+h1 {
+  font-size: 24px;
+  margin: 0 0 6px;
+}
+
+.muted {
+  margin: 0 0 16px;
+  color: #4f5d76;
+}
+
+.health {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #cfd9eb;
+  background: #edf2fb;
+  color: #23314f;
+}
+
+.badge[data-level="ok"] {
+  background: #e9f9ef;
+  border-color: #b8e9c8;
+  color: #1f6b39;
+}
+
+.badge[data-level="bad"] {
+  background: #ffecef;
+  border-color: #f6bcc6;
+  color: #8d1d34;
+}
+
+.badge[data-level="unknown"] {
+  background: #edf2fb;
+  border-color: #cfd9eb;
+  color: #23314f;
+}
+
+.status {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #edf2fb;
+  border: 1px solid #cfd9eb;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.actions label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1b2433;
+  font-size: 14px;
+}
+
+.empty-state {
+  border: 1px dashed #cfd9eb;
+  border-radius: 10px;
+  padding: 12px;
+  margin: 0 0 16px;
+  background: #f9fbff;
+}
+
+.hidden {
+  display: none;
+}
+
+.base-url {
+  width: 100%;
+  margin-bottom: 12px;
+  border: 1px solid #cfd9eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+button {
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #1f5eff;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #3e4a63;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+pre {
+  margin: 0;
+  height: 280px;
+  overflow: auto;
+  border: 1px solid #dde3ee;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f9fbff;
+  font-size: 12px;
+}
