@@ -80,32 +80,75 @@ h2 {
 }
 
 .health {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 6px;
   margin: 0 0 14px;
+  padding: 6px;
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  background: rgba(9, 14, 22, 0.35);
 }
 
 .badge {
-  border: 1px solid #3d4b62;
-  background: var(--chip);
-  color: #c9d6e9;
-  border-radius: 999px;
-  padding: 5px 11px;
-  font-size: 12px;
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #3b4960;
+  background: #202a39;
+  color: #d8e2f0;
+  border-radius: 8px;
+  min-height: 30px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  position: relative;
+}
+
+.badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7f93ae;
+  margin-right: 6px;
+  display: inline-block;
+}
+
+.badge-label {
+  display: inline-flex;
+  align-items: center;
+  color: #aebfd6;
+  gap: 6px;
+}
+
+.badge-value {
+  color: #ebf1fa;
   font-weight: 700;
 }
 
 .badge[data-level="ok"] {
-  background: var(--ok-bg);
-  border-color: #2f7453;
-  color: var(--ok);
+  border-color: #2e7454;
+  background: #1e342b;
+}
+
+.badge[data-level="ok"]::before {
+  background: #62d699;
 }
 
 .badge[data-level="bad"] {
-  background: var(--bad-bg);
   border-color: #74424e;
-  color: var(--bad);
+  background: #3b242b;
+}
+
+.badge[data-level="bad"]::before {
+  background: #e47890;
+}
+
+.badge[data-level="unknown"]::before {
+  background: #7f93ae;
 }
 
 .status {
@@ -292,15 +335,38 @@ pre {
 
   .badge {
     border-color: #d5dbe5;
+    background: #eff3f8;
     color: #33485f;
   }
 
   .badge[data-level="ok"] {
     border-color: #badfc8;
+    background: #e8f7ef;
   }
 
   .badge[data-level="bad"] {
     border-color: #f5c0cb;
+    background: #fdecef;
+  }
+
+  .badge::before {
+    background: #8ea1bc;
+  }
+
+  .badge[data-level="ok"]::before {
+    background: #34b06f;
+  }
+
+  .badge[data-level="bad"]::before {
+    background: #d45772;
+  }
+
+  .badge-label {
+    color: #48607b;
+  }
+
+  .badge-value {
+    color: #243a54;
   }
 
   .status {

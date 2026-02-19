@@ -71,6 +71,7 @@ let currentToastText = "";
 let bridgeStorageHydrated = false;
 let emptyHeaderStatus = t("header.rooms.none");
 let bridgeReachability: "ok" | "bad" | "unknown" = "unknown";
+let glassesReachability: "ok" | "bad" | "unknown" = "unknown";
 let haReachability: "ok" | "bad" | "unknown" = "unknown";
 let suppressCommandSelectionUntilTs = 0;
 let suppressListEventUntilTs = 0;
@@ -207,6 +208,15 @@ function updateHealthState(): void {
             ? t("health.bridge.bad")
             : t("health.bridge.unknown"),
       level: bridgeReachability,
+    },
+    glasses: {
+      text:
+        glassesReachability === "ok"
+          ? t("health.glasses.ok")
+          : glassesReachability === "bad"
+            ? t("health.glasses.bad")
+            : t("health.glasses.unknown"),
+      level: glassesReachability,
     },
     ha: {
       text:
@@ -557,7 +567,7 @@ async function ensureBridge(options?: { silent?: boolean }): Promise<EvenAppBrid
 
   bridge.onDeviceStatusChanged((status) => {
     const connected = status.connectType === DeviceConnectType.Connected;
-    bridgeReachability = connected ? "ok" : "bad";
+    glassesReachability = connected ? "ok" : "bad";
     updateHealthState();
     const battery = status.batteryLevel ?? "n/a";
     setStatus(t("status.deviceInfo", { connectType: String(status.connectType), battery: String(battery) }));

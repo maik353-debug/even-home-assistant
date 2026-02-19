@@ -123,13 +123,14 @@ export function setSetupStateVisible(dom: WebDom, visible: boolean): void {
 type BadgeLevel = "ok" | "bad" | "unknown";
 
 function renderBadge(label: string, text: string, level: BadgeLevel): string {
-  return `<span class="badge" data-level="${level}">${label}: ${text}</span>`;
+  return `<span class="badge" data-level="${level}"><span class="badge-label">${label}</span><span class="badge-value">${text}</span></span>`;
 }
 
 export function setHealthState(
   dom: WebDom,
   value: {
     bridge: { text: string; level: BadgeLevel };
+    glasses: { text: string; level: BadgeLevel };
     ha: { text: string; level: BadgeLevel };
     token: { text: string; level: BadgeLevel };
     rooms: { text: string; level: BadgeLevel };
@@ -137,6 +138,7 @@ export function setHealthState(
 ): void {
   dom.healthEl.innerHTML = [
     renderBadge(t("health.bridge"), value.bridge.text, value.bridge.level),
+    renderBadge(t("health.glasses"), value.glasses.text, value.glasses.level),
     renderBadge(t("health.ha"), value.ha.text, value.ha.level),
     renderBadge(t("health.token"), value.token.text, value.token.level),
     renderBadge(t("health.rooms"), value.rooms.text, value.rooms.level),
