@@ -469,37 +469,6 @@ async function testHomeAssistantConnection(): Promise<void> {
   }
 }
 
-async function runDiagnostics(): Promise<void> {
-  const lines: string[] = [];
-  lines.push(t("diag.title"));
-  lines.push(t("diag.time", { value: new Date().toLocaleString() }));
-  lines.push(t("diag.bridge", { value: bridge ? t("common.yes") : t("common.no") }));
-  lines.push(t("diag.haUrlSet", { value: hasBaseUrl() ? t("common.yes") : t("common.no") }));
-  lines.push(t("diag.tokenSet", { value: hasToken() ? t("common.yes") : t("common.no") }));
-  lines.push(t("diag.options", { value: dom.includeScenesEl.checked ? t("common.on") : t("common.off") }));
-  const domainCounts = { light: 0, scene: 0 };
-  for (const room of state.rooms) {
-    for (const lamp of room.lamps) {
-      domainCounts[getLampDomain(lamp)] += 1;
-    }
-  }
-  lines.push(t("diag.entities", { light: domainCounts.light, scene: domainCounts.scene, rooms: state.rooms.length }));
-  const unavailableCount = Object.values(state.lampStateCache).filter((x) => x === "UNAVAILABLE").length;
-  lines.push(t("diag.unavailable", { count: unavailableCount }));
-
-  const started = performance.now();
-  try {
-    await testHomeAssistantConnection();
-    const duration = Math.round(performance.now() - started);
-    lines.push(t("diag.haPingOk", { ms: duration }));
-  } catch (error) {
-    lines.push(t("diag.haPingFail", { error: toErrorText(error) }));
-  }
-
-  for (const line of lines) writeLog(line);
-  await showHeaderToast(t("toast.diagnosticsDone"), 1200);
-}
-
 async function confirmLampStateAfterCommand(lamp: Lamp): Promise<void> {
   const waits = [250, 450, 700];
   for (const waitMs of waits) {
@@ -1163,7 +1132,6 @@ dom.includeScenesEl.addEventListener("change", () => {
   localStorage.setItem(INCLUDE_SCENES_STORAGE_KEY, dom.includeScenesEl.checked ? "1" : "0");
 });
 
-dom.connectBtn.addEventListener("click", () => run(async () => void (await ensureBridge())));
 dom.deployBtn.addEventListener("click", () => run(deployLampUi));
 dom.shutdownBtn.addEventListener("click", () => run(shutdownPage));
 dom.saveBaseBtn.addEventListener("click", () =>
@@ -1175,17 +1143,6 @@ dom.saveBaseBtn.addEventListener("click", () =>
 );
 dom.loadHaBtn.addEventListener("click", () => run(loadRoomsFromHomeAssistantAction));
 dom.loadHaEmptyBtn.addEventListener("click", () => run(loadRoomsFromHomeAssistantAction));
-dom.diagnosticsBtn.addEventListener("click", () => run(runDiagnostics));
-dom.testBtn.addEventListener("click", () =>
-  run(async () => {
-    const cmd = getEntityCommands(getSelectedLamp(state))[0];
-    if (!cmd) {
-      await notifyUser(t("status.noTestCommand"), t("status.noTestCommand"), t("toast.noCommand"));
-      return;
-    }
-    await executeSelectedCommand(cmd, "web");
-  })
-);
 
 const restoredState = restoreAppState();
 if (restoredState) {
