@@ -21,6 +21,7 @@ import {
   saveConfigToBrowserStorage,
 } from "./config";
 import { mapHaErrorToUserMessage, toErrorText } from "./errors";
+import { localizeCommandLabel, t } from "./i18n";
 import {
   createInitialState,
   getLampStateLabel,
@@ -68,7 +69,7 @@ let headerToastTimer: number | null = null;
 let uiRefreshTimer: number | null = null;
 let currentToastText = "";
 let bridgeStorageHydrated = false;
-let emptyHeaderStatus = "Raeume | keine Daten";
+let emptyHeaderStatus = t("header.rooms.none");
 let bridgeReachability: "ok" | "bad" | "unknown" = "unknown";
 let haReachability: "ok" | "bad" | "unknown" = "unknown";
 let suppressCommandSelectionUntilTs = 0;
@@ -83,7 +84,7 @@ dom.tokenInput.value =
   sessionStorage.getItem(HA_TOKEN_SESSION_STORAGE_KEY) ||
   localStorage.getItem(HA_TOKEN_STORAGE_KEY) ||
   DEFAULT_HA_TOKEN;
-dom.baseUrlInput.placeholder = "z. B. http://homeassistant.local:8123";
+dom.baseUrlInput.placeholder = "e.g. http://homeassistant.local:8123";
 dom.includeScenesEl.checked = localStorage.getItem(INCLUDE_SCENES_STORAGE_KEY) === "1";
 if (BOOTSTRAP_BASE_URL || BOOTSTRAP_HA_TOKEN) {
   saveConfigToBrowserStorage(dom.baseUrlInput.value, dom.tokenInput.value);
@@ -154,7 +155,7 @@ async function hydrateStorageFromBridge(): Promise<void> {
         if (restored) {
           applyRooms(restored.rooms, { roomId: restored.selectedRoomId, lampId: restored.selectedLampId });
           writeLog(`Restored state from bridge storage: ${state.rooms.length} rooms`);
-          setStatus("Gespeicherter Zustand geladen");
+          setStatus(t("status.savedStateLoaded"));
         }
       }
     } else if (localStorage.getItem(APP_STATE_STORAGE_KEY)) {
@@ -199,15 +200,21 @@ function updateHealthState(): void {
   const roomCount = state.rooms.length;
   setHealthStateUi(dom, {
     bridge: {
-      text: bridgeReachability === "ok" ? "verbunden" : bridgeReachability === "bad" ? "fehler" : "offen",
+      text:
+        bridgeReachability === "ok"
+          ? t("health.bridge.ok")
+          : bridgeReachability === "bad"
+            ? t("health.bridge.bad")
+            : t("health.bridge.unknown"),
       level: bridgeReachability,
     },
     ha: {
-      text: haReachability === "ok" ? "erreichbar" : haReachability === "bad" ? "nicht erreichbar" : "unbekannt",
+      text:
+        haReachability === "ok" ? t("health.ha.ok") : haReachability === "bad" ? t("health.ha.bad") : t("health.ha.unknown"),
       level: haReachability,
     },
     token: {
-      text: hasToken() ? "gesetzt" : "fehlt",
+      text: hasToken() ? t("health.token.ok") : t("health.token.bad"),
       level: hasToken() ? "ok" : "bad",
     },
     rooms: {
@@ -232,7 +239,10 @@ function getLampDomain(lamp: Lamp): "light" | "scene" {
 function getEntityCommands(lamp: Lamp | undefined): LampCommand[] {
   if (!lamp) return [];
   const domain = getLampDomain(lamp);
-  return ENTITY_COMMANDS.filter((cmd) => !cmd.domains || cmd.domains.includes(domain));
+  return ENTITY_COMMANDS.filter((cmd) => !cmd.domains || cmd.domains.includes(domain)).map((cmd) => ({
+    ...cmd,
+    label: localizeCommandLabel(cmd.id, cmd.label),
+  }));
 }
 
 function getRoomCommands(room: Room | undefined): LampCommand[] {
@@ -241,7 +251,10 @@ function getRoomCommands(room: Room | undefined): LampCommand[] {
   return ROOM_COMMANDS.filter((cmd) => {
     if (!cmd.domains || cmd.domains.length === 0) return true;
     return cmd.domains.some((domain) => domains.has(domain));
-  });
+  }).map((cmd) => ({
+    ...cmd,
+    label: localizeCommandLabel(cmd.id, cmd.label),
+  }));
 }
 
 function isLampUnavailable(lamp: Lamp): boolean {
@@ -281,9 +294,12 @@ function pruneLampCaches(): void {
 
 function getHeaderText(): string {
   if (!hasRooms(state)) return emptyHeaderStatus;
-  if (state.glassesMenuLevel === "rooms") return `Raeume | ${state.rooms.length} verfuegbar`;
-  if (state.glassesMenuLevel === "lamps") return `Lampen | ${getSelectedRoom(state)?.label ?? "-"}`;
-  return `Befehle | [${getSelectedLampStateLabel(state)}] ${getSelectedLamp(state)?.label ?? "-"}`;
+  if (state.glassesMenuLevel === "rooms") return t("header.rooms.available", { count: state.rooms.length });
+  if (state.glassesMenuLevel === "lamps") return t("header.lamps.forRoom", { room: getSelectedRoom(state)?.label ?? "-" });
+  return t("header.commands.forLamp", {
+    state: getSelectedLampStateLabel(state),
+    lamp: getSelectedLamp(state)?.label ?? "-",
+  });
 }
 
 function setEmptyHeaderStatus(text: string): void {
@@ -403,13 +419,23 @@ async function refreshVisibleLampStates(updateUi = false): Promise<void> {
 
 async function testHomeAssistantConnection(): Promise<void> {
   if (!hasBaseUrl()) {
-    await notifyUser("Home Assistant URL fehlt", "Bitte zuerst Home Assistant URL eintragen.", "Fehler: HA URL fehlt", 1600);
+    await notifyUser(
+      t("status.homeAssistantUrlMissing"),
+      t("status.homeAssistantUrlMissing"),
+      t("toast.errorPrefix", { text: t("status.homeAssistantUrlMissing") }),
+      1600
+    );
     haReachability = "bad";
     updateHealthState();
     return;
   }
   if (!hasToken()) {
-    await notifyUser("Home Assistant token fehlt", "Bitte zuerst Long-Lived Access Token eintragen.", "Fehler: HA Token fehlt", 1600);
+    await notifyUser(
+      t("status.homeAssistantTokenMissing"),
+      t("status.homeAssistantTokenMissing"),
+      t("toast.errorPrefix", { text: t("status.homeAssistantTokenMissing") }),
+      1600
+    );
     haReachability = "bad";
     updateHealthState();
     return;
@@ -426,13 +452,18 @@ async function testHomeAssistantConnection(): Promise<void> {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     haReachability = "ok";
     updateHealthState();
-    await notifyUser("HA Verbindung erfolgreich", "Home Assistant Verbindung erfolgreich getestet.", "HA erreichbar", 1300);
+    await notifyUser(t("status.haConnectionOk"), t("log.connectionTestOk"), t("toast.haReachable"), 1300);
   } catch (error) {
     const reason = toErrorText(error);
     const friendly = mapHaErrorToUserMessage(reason);
     haReachability = "bad";
     updateHealthState();
-    await notifyUser("HA Verbindung fehlgeschlagen", `HA Verbindungstest fehlgeschlagen: ${reason}`, `Fehler: ${friendly}`, 2000);
+    await notifyUser(
+      t("status.haConnectionFail"),
+      `${t("status.haConnectionFail")}: ${reason}`,
+      t("toast.errorPrefix", { text: friendly }),
+      2000
+    );
   } finally {
     window.clearTimeout(timeout);
   }
@@ -440,35 +471,33 @@ async function testHomeAssistantConnection(): Promise<void> {
 
 async function runDiagnostics(): Promise<void> {
   const lines: string[] = [];
-  lines.push("=== Diagnose ===");
-  lines.push(`Zeit: ${new Date().toLocaleString()}`);
-  lines.push(`Bridge: ${bridge ? "initialisiert" : "nicht initialisiert"}`);
-  lines.push(`HA URL gesetzt: ${hasBaseUrl() ? "ja" : "nein"}`);
-  lines.push(`Token gesetzt: ${hasToken() ? "ja" : "nein"}`);
-  lines.push(`Optionen: scenes=${dom.includeScenesEl.checked ? "on" : "off"}`);
+  lines.push(t("diag.title"));
+  lines.push(t("diag.time", { value: new Date().toLocaleString() }));
+  lines.push(t("diag.bridge", { value: bridge ? t("common.yes") : t("common.no") }));
+  lines.push(t("diag.haUrlSet", { value: hasBaseUrl() ? t("common.yes") : t("common.no") }));
+  lines.push(t("diag.tokenSet", { value: hasToken() ? t("common.yes") : t("common.no") }));
+  lines.push(t("diag.options", { value: dom.includeScenesEl.checked ? t("common.on") : t("common.off") }));
   const domainCounts = { light: 0, scene: 0 };
   for (const room of state.rooms) {
     for (const lamp of room.lamps) {
       domainCounts[getLampDomain(lamp)] += 1;
     }
   }
-  lines.push(
-    `Entities: light=${domainCounts.light}, scene=${domainCounts.scene}, rooms=${state.rooms.length}`
-  );
+  lines.push(t("diag.entities", { light: domainCounts.light, scene: domainCounts.scene, rooms: state.rooms.length }));
   const unavailableCount = Object.values(state.lampStateCache).filter((x) => x === "UNAVAILABLE").length;
-  lines.push(`Unavailable: ${unavailableCount}`);
+  lines.push(t("diag.unavailable", { count: unavailableCount }));
 
   const started = performance.now();
   try {
     await testHomeAssistantConnection();
     const duration = Math.round(performance.now() - started);
-    lines.push(`HA Ping: OK (${duration}ms)`);
+    lines.push(t("diag.haPingOk", { ms: duration }));
   } catch (error) {
-    lines.push(`HA Ping: FAIL (${toErrorText(error)})`);
+    lines.push(t("diag.haPingFail", { error: toErrorText(error) }));
   }
 
   for (const line of lines) writeLog(line);
-  await showHeaderToast("Diagnose fertig", 1200);
+  await showHeaderToast(t("toast.diagnosticsDone"), 1200);
 }
 
 async function confirmLampStateAfterCommand(lamp: Lamp): Promise<void> {
@@ -546,15 +575,15 @@ async function ensureBridge(options?: { silent?: boolean }): Promise<EvenAppBrid
   if (bridge) return bridge;
   const silent = options?.silent === true;
 
-  if (!silent) setStatus("Connecting to Even App bridge...");
+  if (!silent) setStatus(t("status.connectingBridge"));
   bridge = await waitForEvenAppBridge();
   bridgeReachability = "ok";
   updateHealthState();
   // Pull persisted values from SDK storage before wiring UI interactions.
   await hydrateStorageFromBridge();
   if (!silent) {
-    setStatus("Bridge connected");
-    writeLog("Bridge ready");
+    setStatus(t("status.bridgeConnected"));
+    writeLog(t("log.bridgeReady"));
   }
 
   bridge.onDeviceStatusChanged((status) => {
@@ -562,7 +591,7 @@ async function ensureBridge(options?: { silent?: boolean }): Promise<EvenAppBrid
     bridgeReachability = connected ? "ok" : "bad";
     updateHealthState();
     const battery = status.batteryLevel ?? "n/a";
-    setStatus(`Device: ${status.connectType} | battery: ${battery}`);
+    setStatus(t("status.deviceInfo", { connectType: String(status.connectType), battery: String(battery) }));
     writeLog(`deviceStatusChanged (connected=${connected}, battery=${battery})`);
   });
 
@@ -675,7 +704,7 @@ function getMenuItems(): string[] {
     (lamp) => getLampStateLabel(state, lamp),
     getEntityCommands(selectedLamp).map((x) => x.label),
     getRoomCommands(selectedRoom).map((x) => x.label),
-    "HA Daten neu laden"
+    t("menu.refreshHa")
   );
 }
 
@@ -689,8 +718,8 @@ async function renderGlassesMenuUi(): Promise<void> {
     currentToastText
   );
   if (!state.glassesUiCreated && !created) {
-    writeLog("StartUpPageContainer fehlgeschlagen (invalid/oversize/outOfMemory)");
-    setStatus("Brillen-UI konnte nicht aufgebaut werden");
+    writeLog(t("log.startupContainerFailed"));
+    setStatus(t("status.uiBuildFailed"));
     return;
   }
   state.glassesUiCreated = created;
@@ -702,18 +731,23 @@ async function executeSelectedCommand(cmd: LampCommand, source: "web" | "glasses
   const room = getSelectedRoom(state);
   const lamp = getSelectedLamp(state);
   if (!room || !lamp) {
-    await notifyUser("Keine Lampe ausgewaehlt", "Bitte zuerst Lampe auswaehlen.", "Keine Lampe");
+    await notifyUser(t("status.noLampSelected"), t("status.noLampSelected"), t("toast.noLamp"));
     return;
   }
   if (isLampUnavailable(lamp)) {
-    await notifyUser("Lampe ist offline", `${lamp.label} ist aktuell nicht verfuegbar.`, "Lampe offline", 1500);
+    await notifyUser(t("status.lampOffline"), `${lamp.label} ${t("status.lampOffline")}`, t("toast.lampOffline"), 1500);
     return;
   }
 
   if (!hasBaseUrl()) {
     haReachability = "bad";
     updateHealthState();
-    await notifyUser("Home Assistant URL fehlt", "Bitte zuerst Home Assistant URL eintragen.", "Fehler: HA URL fehlt", 1600);
+    await notifyUser(
+      t("status.homeAssistantUrlMissing"),
+      t("status.homeAssistantUrlMissing"),
+      t("toast.errorPrefix", { text: t("status.homeAssistantUrlMissing") }),
+      1600
+    );
     return;
   }
 
@@ -721,14 +755,19 @@ async function executeSelectedCommand(cmd: LampCommand, source: "web" | "glasses
   if (!token) {
     haReachability = "bad";
     updateHealthState();
-    await notifyUser("Home Assistant token fehlt", "Bitte Long-Lived Access Token eintragen.", "Fehler: HA Token fehlt", 1600);
+    await notifyUser(
+      t("status.homeAssistantTokenMissing"),
+      t("status.homeAssistantTokenMissing"),
+      t("toast.errorPrefix", { text: t("status.homeAssistantTokenMissing") }),
+      1600
+    );
     return;
   }
 
   const request = buildHaRequest(getBaseUrl(), useHaProxy, lamp, cmd);
   const title = `${room.label} / ${lamp.label} / ${cmd.label}`;
   writeLog(`trigger[${source}] ${title} -> ${request.url}`);
-  setStatus(`Sending: ${title}`);
+  setStatus(t("status.sending", { title }));
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
@@ -778,13 +817,23 @@ async function executeRoomCommand(cmd: LampCommand, source: "web" | "glasses"): 
   if (!hasBaseUrl()) {
     haReachability = "bad";
     updateHealthState();
-    await notifyUser("Home Assistant URL fehlt", "Bitte zuerst Home Assistant URL eintragen.", "Fehler: HA URL fehlt", 1600);
+    await notifyUser(
+      t("status.homeAssistantUrlMissing"),
+      t("status.homeAssistantUrlMissing"),
+      t("toast.errorPrefix", { text: t("status.homeAssistantUrlMissing") }),
+      1600
+    );
     return;
   }
   if (!hasToken()) {
     haReachability = "bad";
     updateHealthState();
-    await notifyUser("Home Assistant token fehlt", "Bitte zuerst Long-Lived Access Token eintragen.", "Fehler: HA Token fehlt", 1600);
+    await notifyUser(
+      t("status.homeAssistantTokenMissing"),
+      t("status.homeAssistantTokenMissing"),
+      t("toast.errorPrefix", { text: t("status.homeAssistantTokenMissing") }),
+      1600
+    );
     return;
   }
 
@@ -794,7 +843,7 @@ async function executeRoomCommand(cmd: LampCommand, source: "web" | "glasses"): 
     return cmd.domains.includes(getLampDomain(lamp));
   });
   if (targeted.length === 0) {
-    await notifyUser("Keine passenden Geraete", "Im Raum sind keine passenden oder verfuegbaren Geraete.", "Keine Ziele", 1500);
+    await notifyUser(t("status.noMatchingDevices"), t("status.noMatchingDevices"), t("toast.noTargets"), 1500);
     return;
   }
 
@@ -852,7 +901,12 @@ async function executeRoomCommand(cmd: LampCommand, source: "web" | "glasses"): 
     const friendly = mapHaErrorToUserMessage(reason);
     haReachability = "bad";
     updateHealthState();
-    await notifyUser("Raumkommando fehlgeschlagen", `${room.label}: ${cmd.label} (${reason})`, `Fehler: ${friendly}`, 2000);
+    await notifyUser(
+      t("status.roomCommandFailed"),
+      `${room.label}: ${cmd.label} (${reason})`,
+      t("toast.errorPrefix", { text: friendly }),
+      2000
+    );
   } finally {
     clearTimeout(timeout);
   }
@@ -892,7 +946,7 @@ async function handleGlassesSelection(rawIndex: number, itemName: string): Promi
   if (state.glassesMenuLevel === "rooms") {
     // The last root item is always the manual HA refresh action.
     if (idx === menuItems.length - 1) {
-      writeLog("Refreshing room list from Home Assistant (glasses menu)");
+      writeLog(t("log.refreshFromMenu"));
       await loadRoomsFromHomeAssistantAction();
       state.glassesMenuLevel = "rooms";
       await renderGlassesMenuUi();
@@ -974,8 +1028,13 @@ async function loadRoomsFromHomeAssistantAction(): Promise<void> {
   if (!hasBaseUrl()) {
     haReachability = "bad";
     updateHealthState();
-    setEmptyHeaderStatus("Fehler | HA URL fehlt");
-    await notifyUser("Home Assistant URL fehlt", "Bitte zuerst Home Assistant URL eintragen.", "Fehler: HA URL fehlt", 1600);
+    setEmptyHeaderStatus(t("toast.errorPrefix", { text: t("status.homeAssistantUrlMissing") }));
+    await notifyUser(
+      t("status.homeAssistantUrlMissing"),
+      t("status.homeAssistantUrlMissing"),
+      t("toast.errorPrefix", { text: t("status.homeAssistantUrlMissing") }),
+      1600
+    );
     return;
   }
 
@@ -983,11 +1042,11 @@ async function loadRoomsFromHomeAssistantAction(): Promise<void> {
   if (!token) {
     haReachability = "bad";
     updateHealthState();
-    setEmptyHeaderStatus("Fehler | HA Token fehlt");
+    setEmptyHeaderStatus(t("toast.errorPrefix", { text: t("status.homeAssistantTokenMissing") }));
     await notifyUser(
-      "Home Assistant token fehlt",
-      "Bitte zuerst Long-Lived Access Token eintragen.",
-      "Fehler: HA Token fehlt",
+      t("status.homeAssistantTokenMissing"),
+      t("status.homeAssistantTokenMissing"),
+      t("toast.errorPrefix", { text: t("status.homeAssistantTokenMissing") }),
       1600
     );
     return;
@@ -1002,24 +1061,24 @@ async function loadRoomsFromHomeAssistantAction(): Promise<void> {
     haReachability = "ok";
     updateHealthState();
     const lampCount = importedRooms.reduce((sum, room) => sum + room.lamps.length, 0);
-    writeLog(`Imported from HA: ${importedRooms.length} rooms, ${lampCount} lights`);
+    writeLog(t("log.importedFromHa", { rooms: importedRooms.length, entities: lampCount }));
     if (lampCount === 0) {
-      setEmptyHeaderStatus("Raeume | keine Lampen");
-      await notifyUser("Keine Lampen in HA gefunden", "HA lieferte keine Lampen.", "Keine Lampen gefunden", 1600);
+      setEmptyHeaderStatus(t("header.rooms.noLamps"));
+      await notifyUser(t("menu.noLampsInHa"), t("menu.noLampsInHa"), t("toast.noLampsFound"), 1600);
       return;
     }
-    setEmptyHeaderStatus("Raeume | keine Daten");
-    await showHeaderToast("HA Daten geladen", 1200);
-    setStatus("Rooms imported from Home Assistant");
+    setEmptyHeaderStatus(t("header.rooms.none"));
+    await showHeaderToast(t("status.roomsImported"), 1200);
+    setStatus(t("status.roomsImported"));
   } catch (error) {
     const reason = toErrorText(error);
     const friendly = mapHaErrorToUserMessage(reason);
     haReachability = "bad";
     updateHealthState();
-    setEmptyHeaderStatus(`Fehler | ${friendly}`);
+    setEmptyHeaderStatus(t("toast.errorPrefix", { text: friendly }));
     writeLog(`HA import failed: ${reason}`);
-    setStatus("HA Laden fehlgeschlagen");
-    await showHeaderToast(`Fehler: ${friendly}`, 2200);
+    setStatus(t("status.haLoadFailed"));
+    await showHeaderToast(t("toast.errorPrefix", { text: friendly }), 2200);
   }
 }
 
@@ -1030,17 +1089,17 @@ async function deployLampUi(): Promise<void> {
   state.glassesMenuLevel = "rooms";
   await renderGlassesMenuUi();
   if (!hasRooms(state)) {
-    setEmptyHeaderStatus("Raeume | keine Daten");
-    writeLog("No rooms loaded. Use 'HA Daten neu laden' in glasses menu.");
-    setStatus("Keine Raeume geladen. Unten im Menue: HA Daten neu laden.");
+    setEmptyHeaderStatus(t("header.rooms.none"));
+    writeLog(t("log.noRoomsLoaded"));
+    setStatus(t("status.noRoomsLoaded"));
     return;
   }
-  writeLog("Glasses menu deployed: Raeume -> Lampen -> Befehle");
-  setStatus("Lamp menu deployed");
+  writeLog(t("log.menuDeployed"));
+  setStatus(t("status.lampMenuDeployed"));
 }
 
 async function shutdownPage(): Promise<void> {
-  if (!window.confirm("Wirklich die Seite auf der Brille schliessen?")) {
+  if (!window.confirm(t("prompt.shutdownConfirm"))) {
     return;
   }
   await shutdownPageFromGesture();
@@ -1062,8 +1121,8 @@ async function run(action: () => Promise<void>): Promise<void> {
     const reason = toErrorText(error);
     const friendly = mapHaErrorToUserMessage(reason);
     writeLog(`error: ${reason}`);
-    setStatus("Operation failed. See log.");
-    await showHeaderToast(`Fehler: ${friendly}`, 1800);
+    setStatus(t("status.operationFailed"));
+    await showHeaderToast(t("toast.errorPrefix", { text: friendly }), 1800);
   } finally {
     setBusy(false);
   }
@@ -1110,7 +1169,7 @@ dom.shutdownBtn.addEventListener("click", () => run(shutdownPage));
 dom.saveBaseBtn.addEventListener("click", () =>
   run(async () => {
     persistConfigDraft();
-    writeLog(`Config persisted for ${getBaseUrl() || "-"}`);
+    writeLog(t("log.connectionPersisted", { baseUrl: getBaseUrl() || "-" }));
     await testHomeAssistantConnection();
   })
 );
@@ -1121,7 +1180,7 @@ dom.testBtn.addEventListener("click", () =>
   run(async () => {
     const cmd = getEntityCommands(getSelectedLamp(state))[0];
     if (!cmd) {
-      await notifyUser("Kein Testkommando", "Fuer diese Entitaet ist kein Testkommando verfuegbar.", "Kein Kommando");
+      await notifyUser(t("status.noTestCommand"), t("status.noTestCommand"), t("toast.noCommand"));
       return;
     }
     await executeSelectedCommand(cmd, "web");
@@ -1132,13 +1191,13 @@ const restoredState = restoreAppState();
 if (restoredState) {
   applyRooms(restoredState.rooms, { roomId: restoredState.selectedRoomId, lampId: restoredState.selectedLampId });
   writeLog(`Restored saved state: ${state.rooms.length} rooms`);
-  setStatus("Gespeicherter Zustand geladen");
+  setStatus(t("status.savedStateLoaded"));
 } else {
   syncSelectors();
-  setStatus("Bitte HA URL + Token setzen und Daten laden");
-  writeLog("First run: erst HA URL + Token setzen, dann 'Load rooms from HA'.");
+  setStatus(t("status.missingConfig"));
+  writeLog(t("log.firstRun"));
 }
 
-writeLog("Ready. You can deploy directly or refresh HA data.");
+writeLog(t("log.ready"));
 // Warm bridge in background so URL/token from SDK storage are available without manual connect first.
 void ensureBridgeSilent();

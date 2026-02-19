@@ -1,0 +1,277 @@
+export type Locale = "de" | "en";
+
+const LOCALE_STORAGE_KEY = "app_locale";
+
+const translations = {
+  de: {
+    "lang.code": "de",
+    "app.title": "Even Home Assistant",
+    "setup.steps": "Setup: 1) HA URL 2) Token 3) HA Daten laden",
+    "button.connect": "Bridge verbinden",
+    "button.deploy": "Auf Brille deployen",
+    "button.shutdown": "Seite beenden",
+    "label.baseUrl": "Home Assistant URL",
+    "label.token": "Home Assistant Long-Lived Access Token",
+    "button.testConnection": "Verbindung testen",
+    "button.loadHa": "Raeume aus HA laden",
+    "button.diagnostics": "Diagnose",
+    "button.testCommand": "Testkommando ausfuehren",
+    "label.includeScenes": "Szenen laden",
+    "empty.noRoomsWeb": "Noch keine Raeume geladen. Lade jetzt deine Daten aus Home Assistant.",
+    "button.loadHaNow": "Jetzt aus HA laden",
+    "label.simFlow": "Simulator/Web Testfluss",
+    "status.idle": "Bereit",
+    "status.connectingBridge": "Verbinde mit Even App Bridge...",
+    "status.bridgeConnected": "Bridge verbunden",
+    "status.deviceInfo": "Geraet: {connectType} | Akku: {battery}",
+    "select.noRooms": "Keine Raeume geladen",
+    "select.noLamps": "Keine Lampen",
+    "health.bridge": "Bridge",
+    "health.ha": "HA",
+    "health.token": "Token",
+    "health.rooms": "Raeume",
+    "health.bridge.ok": "verbunden",
+    "health.bridge.bad": "fehler",
+    "health.bridge.unknown": "offen",
+    "health.ha.ok": "erreichbar",
+    "health.ha.bad": "nicht erreichbar",
+    "health.ha.unknown": "unbekannt",
+    "health.token.ok": "gesetzt",
+    "health.token.bad": "fehlt",
+    "header.rooms.none": "Raeume | keine Daten",
+    "header.rooms.available": "Raeume | {count} verfuegbar",
+    "header.lamps.forRoom": "Lampen | {room}",
+    "header.commands.forLamp": "Befehle | [{state}] {lamp}",
+    "header.rooms.noLamps": "Raeume | keine Lampen",
+    "menu.refreshHa": "HA Daten neu laden",
+    "menu.noRooms": "Keine Raeume geladen",
+    "menu.noLampsInHa": "Keine Lampen in HA",
+    "status.savedStateLoaded": "Gespeicherter Zustand geladen",
+    "status.missingConfig": "Bitte HA URL + Token setzen und Daten laden",
+    "status.noRoomsLoaded": "Keine Raeume geladen. Unten im Menue: HA Daten neu laden.",
+    "status.lampMenuDeployed": "Lampenmenue deployed",
+    "status.uiBuildFailed": "Brillen-UI konnte nicht aufgebaut werden",
+    "status.operationFailed": "Operation fehlgeschlagen. Siehe Log.",
+    "status.sending": "Sende: {title}",
+    "status.haLoadFailed": "HA Laden fehlgeschlagen",
+    "status.roomsImported": "Raeume aus Home Assistant importiert",
+    "status.noLampSelected": "Keine Lampe ausgewaehlt",
+    "status.lampOffline": "Lampe ist offline",
+    "status.noMatchingDevices": "Keine passenden Geraete",
+    "status.roomCommandFailed": "Raumkommando fehlgeschlagen",
+    "status.noTestCommand": "Kein Testkommando",
+    "status.haConnectionOk": "HA Verbindung erfolgreich",
+    "status.haConnectionFail": "HA Verbindung fehlgeschlagen",
+    "status.homeAssistantUrlMissing": "Home Assistant URL fehlt",
+    "status.homeAssistantTokenMissing": "Home Assistant Token fehlt",
+    "toast.errorPrefix": "Fehler: {text}",
+    "toast.haReachable": "HA erreichbar",
+    "toast.diagnosticsDone": "Diagnose fertig",
+    "toast.noCommand": "Kein Kommando",
+    "toast.noLamp": "Keine Lampe",
+    "toast.lampOffline": "Lampe offline",
+    "toast.noTargets": "Keine Ziele",
+    "toast.noLampsFound": "Keine Lampen gefunden",
+    "log.ready": "Bereit. Du kannst direkt deployen oder HA Daten aktualisieren.",
+    "log.bridgeReady": "Bridge bereit",
+    "log.startupContainerFailed": "StartUpPageContainer fehlgeschlagen (invalid/oversize/outOfMemory)",
+    "log.firstRun": "Erster Start: erst HA URL + Token setzen, dann 'Load rooms from HA'.",
+    "log.noRoomsLoaded": "Keine Raeume geladen. Nutze 'HA Daten neu laden' im Brillenmenue.",
+    "log.menuDeployed": "Brillenmenue deployed: Raeume -> Lampen -> Befehle",
+    "log.refreshFromMenu": "Aktualisiere Raumliste aus Home Assistant (Brillenmenue)",
+    "log.importedFromHa": "Importiert aus HA: {rooms} Raeume, {entities} Eintraege",
+    "log.connectionTestOk": "Home Assistant Verbindung erfolgreich getestet.",
+    "log.connectionPersisted": "Konfiguration gespeichert fuer {baseUrl}",
+    "diag.title": "=== Diagnose ===",
+    "diag.time": "Zeit: {value}",
+    "diag.bridge": "Bridge: {value}",
+    "diag.haUrlSet": "HA URL gesetzt: {value}",
+    "diag.tokenSet": "Token gesetzt: {value}",
+    "diag.options": "Optionen: scenes={value}",
+    "diag.entities": "Entities: light={light}, scene={scene}, rooms={rooms}",
+    "diag.unavailable": "Unavailable: {count}",
+    "diag.haPingOk": "HA Ping: OK ({ms}ms)",
+    "diag.haPingFail": "HA Ping: FEHLER ({error})",
+    "prompt.shutdownConfirm": "Wirklich die Seite auf der Brille schliessen?",
+    "common.yes": "ja",
+    "common.no": "nein",
+    "common.on": "an",
+    "common.off": "aus",
+    "error.tokenInvalid": "Token ungueltig",
+    "error.noPermission": "Keine Berechtigung",
+    "error.apiNotFound": "HA API nicht gefunden",
+    "error.timeout": "Zeitueberschreitung zu Home Assistant",
+    "error.unreachable": "Home Assistant nicht erreichbar",
+    "error.generic": "Home Assistant Fehler",
+    "cmd.on": "Einschalten",
+    "cmd.off": "Ausschalten",
+    "cmd.toggle": "Toggle",
+    "cmd.dim_30": "Dimmen 30%",
+    "cmd.dim_70": "Dimmen 70%",
+    "cmd.scene_activate": "Szene aktivieren",
+    "cmd.room_on": "Raum: Alle an",
+    "cmd.room_off": "Raum: Alle aus",
+    "cmd.room_dim_30": "Raum: Dimmen 30%",
+    "cmd.room_dim_70": "Raum: Dimmen 70%",
+  },
+  en: {
+    "lang.code": "en",
+    "app.title": "Even Home Assistant",
+    "setup.steps": "Setup: 1) HA URL 2) Token 3) Load HA data",
+    "button.connect": "Connect bridge",
+    "button.deploy": "Deploy to glasses",
+    "button.shutdown": "Shutdown page",
+    "label.baseUrl": "Home Assistant URL",
+    "label.token": "Home Assistant Long-Lived Access Token",
+    "button.testConnection": "Test connection",
+    "button.loadHa": "Load rooms from HA",
+    "button.diagnostics": "Diagnostics",
+    "button.testCommand": "Run test command",
+    "label.includeScenes": "Load scenes",
+    "empty.noRoomsWeb": "No rooms loaded yet. Load your data from Home Assistant.",
+    "button.loadHaNow": "Load from HA now",
+    "label.simFlow": "Simulator/Web test flow",
+    "status.idle": "Ready",
+    "status.connectingBridge": "Connecting to Even App bridge...",
+    "status.bridgeConnected": "Bridge connected",
+    "status.deviceInfo": "Device: {connectType} | battery: {battery}",
+    "select.noRooms": "No rooms loaded",
+    "select.noLamps": "No lamps",
+    "health.bridge": "Bridge",
+    "health.ha": "HA",
+    "health.token": "Token",
+    "health.rooms": "Rooms",
+    "health.bridge.ok": "connected",
+    "health.bridge.bad": "error",
+    "health.bridge.unknown": "open",
+    "health.ha.ok": "reachable",
+    "health.ha.bad": "unreachable",
+    "health.ha.unknown": "unknown",
+    "health.token.ok": "set",
+    "health.token.bad": "missing",
+    "header.rooms.none": "Rooms | no data",
+    "header.rooms.available": "Rooms | {count} available",
+    "header.lamps.forRoom": "Lamps | {room}",
+    "header.commands.forLamp": "Commands | [{state}] {lamp}",
+    "header.rooms.noLamps": "Rooms | no lamps",
+    "menu.refreshHa": "Reload HA data",
+    "menu.noRooms": "No rooms loaded",
+    "menu.noLampsInHa": "No lamps in HA",
+    "status.savedStateLoaded": "Loaded saved state",
+    "status.missingConfig": "Please set HA URL + token and load data",
+    "status.noRoomsLoaded": "No rooms loaded. Use 'Reload HA data' at the bottom of menu.",
+    "status.lampMenuDeployed": "Lamp menu deployed",
+    "status.uiBuildFailed": "Failed to build glasses UI",
+    "status.operationFailed": "Operation failed. See log.",
+    "status.sending": "Sending: {title}",
+    "status.haLoadFailed": "Failed to load HA data",
+    "status.roomsImported": "Imported rooms from Home Assistant",
+    "status.noLampSelected": "No lamp selected",
+    "status.lampOffline": "Lamp is offline",
+    "status.noMatchingDevices": "No matching devices",
+    "status.roomCommandFailed": "Room command failed",
+    "status.noTestCommand": "No test command",
+    "status.haConnectionOk": "HA connection successful",
+    "status.haConnectionFail": "HA connection failed",
+    "status.homeAssistantUrlMissing": "Home Assistant URL missing",
+    "status.homeAssistantTokenMissing": "Home Assistant token missing",
+    "toast.errorPrefix": "Error: {text}",
+    "toast.haReachable": "HA reachable",
+    "toast.diagnosticsDone": "Diagnostics done",
+    "toast.noCommand": "No command",
+    "toast.noLamp": "No lamp",
+    "toast.lampOffline": "Lamp offline",
+    "toast.noTargets": "No targets",
+    "toast.noLampsFound": "No lamps found",
+    "log.ready": "Ready. You can deploy directly or refresh HA data.",
+    "log.bridgeReady": "Bridge ready",
+    "log.startupContainerFailed": "StartUpPageContainer failed (invalid/oversize/outOfMemory)",
+    "log.firstRun": "First run: set HA URL + token, then 'Load rooms from HA'.",
+    "log.noRoomsLoaded": "No rooms loaded. Use 'Reload HA data' in glasses menu.",
+    "log.menuDeployed": "Glasses menu deployed: Rooms -> Lamps -> Commands",
+    "log.refreshFromMenu": "Refreshing room list from Home Assistant (glasses menu)",
+    "log.importedFromHa": "Imported from HA: {rooms} rooms, {entities} entries",
+    "log.connectionTestOk": "Home Assistant connection test successful.",
+    "log.connectionPersisted": "Config persisted for {baseUrl}",
+    "diag.title": "=== Diagnostics ===",
+    "diag.time": "Time: {value}",
+    "diag.bridge": "Bridge: {value}",
+    "diag.haUrlSet": "HA URL set: {value}",
+    "diag.tokenSet": "Token set: {value}",
+    "diag.options": "Options: scenes={value}",
+    "diag.entities": "Entities: light={light}, scene={scene}, rooms={rooms}",
+    "diag.unavailable": "Unavailable: {count}",
+    "diag.haPingOk": "HA ping: OK ({ms}ms)",
+    "diag.haPingFail": "HA ping: FAIL ({error})",
+    "prompt.shutdownConfirm": "Do you really want to close the page on glasses?",
+    "common.yes": "yes",
+    "common.no": "no",
+    "common.on": "on",
+    "common.off": "off",
+    "error.tokenInvalid": "Invalid token",
+    "error.noPermission": "No permission",
+    "error.apiNotFound": "HA API not found",
+    "error.timeout": "Timeout to Home Assistant",
+    "error.unreachable": "Home Assistant unreachable",
+    "error.generic": "Home Assistant error",
+    "cmd.on": "Turn on",
+    "cmd.off": "Turn off",
+    "cmd.toggle": "Toggle",
+    "cmd.dim_30": "Dim 30%",
+    "cmd.dim_70": "Dim 70%",
+    "cmd.scene_activate": "Activate scene",
+    "cmd.room_on": "Room: all on",
+    "cmd.room_off": "Room: all off",
+    "cmd.room_dim_30": "Room: dim 30%",
+    "cmd.room_dim_70": "Room: dim 70%",
+  },
+} as const;
+
+type I18nKey = keyof (typeof translations)["de"];
+
+function normalizeLocale(value: string | null | undefined): Locale | null {
+  if (!value) return null;
+  const lower = value.toLowerCase();
+  if (lower.startsWith("de")) return "de";
+  if (lower.startsWith("en")) return "en";
+  return null;
+}
+
+function resolveInitialLocale(): Locale {
+  const fromQuery = normalizeLocale(new URLSearchParams(window.location.search).get("lang"));
+  if (fromQuery) {
+    localStorage.setItem(LOCALE_STORAGE_KEY, fromQuery);
+    return fromQuery;
+  }
+  const fromStorage = normalizeLocale(localStorage.getItem(LOCALE_STORAGE_KEY));
+  if (fromStorage) return fromStorage;
+  return normalizeLocale(navigator.language) ?? "en";
+}
+
+let currentLocale: Locale = resolveInitialLocale();
+
+export function getLocale(): Locale {
+  return currentLocale;
+}
+
+export function setLocale(locale: Locale): void {
+  currentLocale = locale;
+  localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+}
+
+function formatTemplate(template: string, params?: Record<string, string | number>): string {
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, token: string) => String(params[token] ?? ""));
+}
+
+export function t(key: I18nKey, params?: Record<string, string | number>): string {
+  const table = translations[currentLocale];
+  const fallback = translations.en[key];
+  return formatTemplate(table[key] ?? fallback, params);
+}
+
+export function localizeCommandLabel(commandId: string, fallbackLabel: string): string {
+  const key = `cmd.${commandId}` as I18nKey;
+  const table = translations[currentLocale] as Record<string, string>;
+  return table[key] ?? fallbackLabel;
+}

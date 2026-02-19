@@ -1,4 +1,5 @@
 import type { Lamp, MenuLevel, Room } from "./models";
+import { t } from "./i18n";
 
 export function getGlassesMenuItems(
   rooms: Room[],
@@ -7,19 +8,19 @@ export function getGlassesMenuItems(
   lampStateLabel: (lamp: Lamp) => string,
   commandLabels: string[],
   roomCommandLabels: string[] = [],
-  refreshLabel = "HA Daten neu laden"
+  refreshLabel = t("menu.refreshHa")
 ): string[] {
   if (level === "rooms") {
     const items = rooms.map((x) => x.label);
     if (rooms.length === 0) {
-      items.push("Keine Raeume geladen");
+      items.push(t("menu.noRooms"));
     }
     items.push(refreshLabel);
     return items;
   }
-  if (rooms.length === 0) return ["Keine Lampen in HA"];
+  if (rooms.length === 0) return [t("menu.noLampsInHa")];
   if (level === "lamps") {
-    if (!selectedRoom) return ["Keine Lampen in HA"];
+    if (!selectedRoom) return [t("menu.noLampsInHa")];
     const roomActions = roomCommandLabels.map((x) => `[${x}]`);
     const lampItems = selectedRoom.lamps.map((x) => `${x.label} [${lampStateLabel(x)}]`);
     return [...roomActions, ...lampItems];

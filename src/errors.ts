@@ -1,3 +1,5 @@
+import { t } from "./i18n";
+
 export function toErrorText(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
   return String(error);
@@ -5,13 +7,12 @@ export function toErrorText(error: unknown): string {
 
 export function mapHaErrorToUserMessage(raw: string): string {
   const text = raw.toLowerCase();
-  if (text.includes("401")) return "Token ungueltig";
-  if (text.includes("403")) return "Keine Berechtigung";
-  if (text.includes("404")) return "HA API nicht gefunden";
-  if (text.includes("abort") || text.includes("timeout")) return "Zeitueberschreitung zu Home Assistant";
+  if (text.includes("401")) return t("error.tokenInvalid");
+  if (text.includes("403")) return t("error.noPermission");
+  if (text.includes("404")) return t("error.apiNotFound");
+  if (text.includes("abort") || text.includes("timeout")) return t("error.timeout");
   if (text.includes("failed to fetch") || text.includes("networkerror") || text.includes("econn") || text.includes("enotfound")) {
-    return "Home Assistant nicht erreichbar";
+    return t("error.unreachable");
   }
-  return "Home Assistant Fehler";
+  return t("error.generic");
 }
-

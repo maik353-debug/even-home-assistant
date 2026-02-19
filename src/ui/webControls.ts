@@ -1,4 +1,5 @@
 import type { LampCommand, Room } from "../models";
+import { t } from "../i18n";
 
 export type WebDom = {
   statusEl: HTMLDivElement;
@@ -30,33 +31,33 @@ function mustQuery<T extends Element>(selector: string): T {
 export function initWebUi(app: HTMLDivElement): WebDom {
   app.innerHTML = `
     <main class="card">
-      <h1>G2 Smart Lamp Control</h1>
-      <p class="muted">Setup: 1) HA URL 2) Token 3) HA Daten laden</p>
+      <h1>${t("app.title")}</h1>
+      <p class="muted">${t("setup.steps")}</p>
       <div id="health" class="health"></div>
-      <div id="status" class="status">Idle</div>
+      <div id="status" class="status">${t("status.idle")}</div>
       <div class="actions">
-        <button id="btn-connect">Connect bridge</button>
-        <button id="btn-deploy">Deploy to glasses</button>
-        <button id="btn-shutdown" class="secondary">Shutdown page</button>
+        <button id="btn-connect">${t("button.connect")}</button>
+        <button id="btn-deploy">${t("button.deploy")}</button>
+        <button id="btn-shutdown" class="secondary">${t("button.shutdown")}</button>
       </div>
-      <p class="muted">Local API Base URL</p>
+      <p class="muted">${t("label.baseUrl")}</p>
       <input id="base-url" class="base-url" />
-      <p class="muted">Home Assistant Long-Lived Access Token</p>
+      <p class="muted">${t("label.token")}</p>
       <input id="ha-token" class="base-url" type="password" />
       <div class="actions">
-        <button id="btn-save-base">Verbindung testen</button>
-        <button id="btn-load-ha">Load rooms from HA</button>
-        <button id="btn-diagnostics" class="secondary">Diagnose</button>
-        <button id="btn-test">Test selected command</button>
+        <button id="btn-save-base">${t("button.testConnection")}</button>
+        <button id="btn-load-ha">${t("button.loadHa")}</button>
+        <button id="btn-diagnostics" class="secondary">${t("button.diagnostics")}</button>
+        <button id="btn-test">${t("button.testCommand")}</button>
       </div>
       <div class="actions">
-        <label><input id="include-scenes" type="checkbox" /> Szenen laden</label>
+        <label><input id="include-scenes" type="checkbox" /> ${t("label.includeScenes")}</label>
       </div>
       <div id="setup-state" class="empty-state hidden">
-        <p class="muted">Noch keine Raeume geladen. Lade jetzt deine Daten aus Home Assistant.</p>
-        <button id="btn-load-ha-empty">Jetzt aus HA laden</button>
+        <p class="muted">${t("empty.noRoomsWeb")}</p>
+        <button id="btn-load-ha-empty">${t("button.loadHaNow")}</button>
       </div>
-      <p class="muted">Simulator/Web test flow</p>
+      <p class="muted">${t("label.simFlow")}</p>
       <select id="room-select" class="base-url"></select>
       <select id="lamp-select" class="base-url"></select>
       <div id="command-actions" class="actions"></div>
@@ -126,10 +127,10 @@ export function setHealthState(
   }
 ): void {
   dom.healthEl.innerHTML = [
-    renderBadge("Bridge", value.bridge.text, value.bridge.level),
-    renderBadge("HA", value.ha.text, value.ha.level),
-    renderBadge("Token", value.token.text, value.token.level),
-    renderBadge("Raeume", value.rooms.text, value.rooms.level),
+    renderBadge(t("health.bridge"), value.bridge.text, value.bridge.level),
+    renderBadge(t("health.ha"), value.ha.text, value.ha.level),
+    renderBadge(t("health.token"), value.token.text, value.token.level),
+    renderBadge(t("health.rooms"), value.rooms.text, value.rooms.level),
   ].join("");
 }
 
@@ -138,7 +139,7 @@ export function renderRoomSelect(dom: WebDom, rooms: Room[], selectedRoomId: str
   if (rooms.length === 0) {
     const option = document.createElement("option");
     option.value = "";
-    option.textContent = "Keine Raeume geladen";
+    option.textContent = t("select.noRooms");
     dom.roomSelectEl.appendChild(option);
     dom.roomSelectEl.value = "";
     return;
@@ -157,7 +158,7 @@ export function renderLampSelect(dom: WebDom, room: Room | undefined, selectedLa
   if (!room) {
     const option = document.createElement("option");
     option.value = "";
-    option.textContent = "Keine Lampen";
+    option.textContent = t("select.noLamps");
     dom.lampSelectEl.appendChild(option);
     dom.lampSelectEl.value = "";
     return;
