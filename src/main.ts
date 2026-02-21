@@ -680,6 +680,18 @@ async function ensureBridgeSilent(): Promise<void> {
   }
 }
 
+function getRoomLampSummary(room: Room): string {
+  const lightLamps = room.lamps.filter((lamp) => getLampDomain(lamp) === "light");
+  if (lightLamps.length > 0) {
+    const total = lightLamps.length;
+    const on = lightLamps.reduce((count, lamp) => count + (getLampStateLabel(state, lamp) === "ON" ? 1 : 0), 0);
+    return `${on}/${total}`;
+  }
+  const sceneCount = room.lamps.filter((lamp) => getLampDomain(lamp) === "scene").length;
+  if (sceneCount === 0) return "";
+  return String(sceneCount);
+}
+
 function getMenuItems(): string[] {
   const selectedLamp = getSelectedLamp(state);
   const selectedRoom = getSelectedRoom(state);
@@ -690,7 +702,8 @@ function getMenuItems(): string[] {
     (lamp) => (getLampDomain(lamp) === "scene" ? "" : getLampStateLabel(state, lamp)),
     getEntityCommands(selectedLamp).map((x) => x.label),
     getRoomCommands(selectedRoom).map((x) => x.label),
-    t("menu.refreshHa")
+    t("menu.refreshHa"),
+    getRoomLampSummary
   );
 }
 

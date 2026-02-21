@@ -1,6 +1,15 @@
 import type { Lamp, MenuLevel, Room } from "./models";
 import { t } from "./i18n";
 
+function formatRoomListItem(label: string, summary: string): string {
+  if (!summary) return label;
+  const maxChars = 24;
+  const safeSummary = summary.slice(0, 9);
+  const maxLabelChars = Math.max(6, maxChars - safeSummary.length - 3);
+  const shortLabel = label.length > maxLabelChars ? `${label.slice(0, maxLabelChars - 3)}...` : label;
+  return `${shortLabel} (${safeSummary})`;
+}
+
 export function getGlassesMenuItems(
   rooms: Room[],
   level: MenuLevel,
@@ -8,10 +17,11 @@ export function getGlassesMenuItems(
   lampStateLabel: (lamp: Lamp) => string,
   commandLabels: string[],
   roomCommandLabels: string[] = [],
-  refreshLabel = t("menu.refreshHa")
+  refreshLabel = t("menu.refreshHa"),
+  roomSummaryLabel?: (room: Room) => string
 ): string[] {
   if (level === "rooms") {
-    const items = rooms.map((x) => x.label);
+    const items = rooms.map((room) => formatRoomListItem(room.label, roomSummaryLabel?.(room) ?? ""));
     if (rooms.length === 0) {
       items.push(t("menu.noRooms"));
     }
