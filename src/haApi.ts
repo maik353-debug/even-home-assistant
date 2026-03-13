@@ -1,5 +1,109 @@
 import type { EntityDomain, Lamp, LampCommand, Room } from "./models";
 
+const HA_MDNS_CANDIDATES = [
+  "http://homeassistant.local:8123",
+  "http://homeassistant:8123",
+];
+
+async function checkHaUrl(baseUrl: string, timeoutMs: number): Promise<string | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(`${baseUrl}/api/`, { method: "GET", signal: controller.signal });
+    clearTimeout(timer);
+    // 200 = API running (no auth required), 401 = auth required but HA is there
+    if (response.ok || response.status === 401) return baseUrl;
+    return null;
+  } catch {
+    clearTimeout(timer);
+    return null;
+  }
+}
+
+async function getLocalSubnet(): Promise<string | null> {
+  return new Promise((resolve) => {
+    try {
+      const pc = new RTCPeerConnection({ iceServers: [] });
+      pc.createDataChannel("");
+      void pc.createOffer().then((offer) => pc.setLocalDescription(offer));
+      const timer = setTimeout(() => { pc.close(); resolve(null); }, 2000);
+      pc.onicecandidate = (event) => {
+        if (!event.candidate) return;
+        const match = /(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}/.exec(event.candidate.candidate);
+        if (match) {
+          clearTimeout(timer);
+          pc.close();
+          resolve(match[1]);
+        }
+      };
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+async function scanSubnetForHa(subnet: string, timeoutMs: number): Promise<string | null> {
+  const checks: Promise<string | null>[] = [];
+  for (let i = 1; i <= 254; i++) {
+    checks.push(checkHaUrl(`http://${subnet}.${i}:8123`, timeoutMs));
+  }
+  const results = await Promise.all(checks);
+  return results.find((r) => r !== null) ?? null;
+}
+
+// Common home network subnets in priority order (FritzBox default first)
+const FALLBACK_SUBNETS = [
+  "192.168.178",
+  "192.168.1",
+  "192.168.0",
+  "192.168.2",
+  "10.0.0",
+  "10.0.1",
+];
+
+export async function discoverHomeAssistant(isLocalDev: boolean, onLog?: (msg: string) => void): Promise<string | null> {
+  const log = (msg: string) => onLog?.(msg);
+
+  // In dev mode: delegate to Vite server-side endpoint (bypasses Chrome Private Network Access)
+  if (isLocalDev) {
+    log("Discovery: server-side scan via Vite...");
+    try {
+      const res = await fetch("/api/ha-discover");
+      if (res.ok) {
+        const data = (await res.json()) as { url?: string };
+        if (data.url) { log(`Discovery: found at ${data.url}`); return data.url; }
+      }
+    } catch {
+      // fall through to client-side scan
+    }
+    log("Discovery: no HA instance found");
+    return null;
+  }
+
+  // In packaged mode: client-side scan (no CORS restrictions in native webview)
+  log(`Discovery: trying mDNS (${HA_MDNS_CANDIDATES.join(", ")})`);
+  const mdnsResult = await Promise.all(HA_MDNS_CANDIDATES.map((url) => checkHaUrl(url, 2000)));
+  const mdnsFound = mdnsResult.find((r) => r !== null);
+  if (mdnsFound) { log(`Discovery: found via mDNS: ${mdnsFound}`); return mdnsFound; }
+  log("Discovery: mDNS not found, trying subnet scan...");
+
+  const rtcSubnet = await getLocalSubnet();
+  const subnets = rtcSubnet
+    ? [rtcSubnet, ...FALLBACK_SUBNETS.filter((s) => s !== rtcSubnet)]
+    : FALLBACK_SUBNETS;
+  if (rtcSubnet) { log(`Discovery: WebRTC subnet: ${rtcSubnet}`); }
+  else { log("Discovery: WebRTC unavailable, scanning common subnets..."); }
+
+  for (const subnet of subnets) {
+    log(`Discovery: scanning ${subnet}.1-254 ...`);
+    const result = await scanSubnetForHa(subnet, 1000);
+    if (result) { log(`Discovery: found at ${result}`); return result; }
+  }
+
+  log("Discovery: no HA instance found");
+  return null;
+}
+
 const SCENES_GROUP_TOKEN = "__EVEN_SCENES_GROUP__";
 
 export function haApiUrl(baseUrl: string, isLocalDev: boolean, path: string): string {

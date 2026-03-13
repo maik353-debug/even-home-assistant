@@ -9,6 +9,7 @@ export type WebDom = {
   deployBtn: HTMLButtonElement;
   shutdownBtn: HTMLButtonElement;
   saveBaseBtn: HTMLButtonElement;
+  discoverBtn: HTMLButtonElement;
   loadHaBtn: HTMLButtonElement;
   loadHaEmptyBtn: HTMLButtonElement;
   includeScenesEl: HTMLInputElement;
@@ -53,6 +54,7 @@ export function initWebUi(app: HTMLDivElement): WebDom {
           <label class="switch-line"><input id="include-scenes" type="checkbox" /> ${t("label.includeScenes")}</label>
           <div class="actions">
             <button id="btn-save-base">${t("button.testConnection")}</button>
+            <button id="btn-discover" class="secondary">${t("button.discover")}</button>
             <button id="btn-load-ha">${t("button.loadHa")}</button>
           </div>
         </article>
@@ -88,6 +90,7 @@ export function initWebUi(app: HTMLDivElement): WebDom {
     deployBtn: mustQuery<HTMLButtonElement>("#btn-deploy"),
     shutdownBtn: mustQuery<HTMLButtonElement>("#btn-shutdown"),
     saveBaseBtn: mustQuery<HTMLButtonElement>("#btn-save-base"),
+    discoverBtn: mustQuery<HTMLButtonElement>("#btn-discover"),
     loadHaBtn: mustQuery<HTMLButtonElement>("#btn-load-ha"),
     loadHaEmptyBtn: mustQuery<HTMLButtonElement>("#btn-load-ha-empty"),
     includeScenesEl: mustQuery<HTMLInputElement>("#include-scenes"),
@@ -103,6 +106,7 @@ export function setBusy(dom: WebDom, value: boolean): void {
   dom.deployBtn.disabled = value;
   dom.shutdownBtn.disabled = value;
   dom.saveBaseBtn.disabled = value;
+  dom.discoverBtn.disabled = value;
   dom.loadHaBtn.disabled = value;
   dom.loadHaEmptyBtn.disabled = value;
 }

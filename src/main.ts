@@ -2,6 +2,7 @@ import { DeviceConnectType, OsEventTypeList, type EvenAppBridge, waitForEvenAppB
 import {
   buildHaRequest,
   buildHaRequestForEntityIds,
+  discoverHomeAssistant,
   fetchLampState,
   haApiUrl,
   loadRoomsFromHomeAssistant as loadRoomsFromHomeAssistantApi,
@@ -680,6 +681,28 @@ async function ensureBridgeSilent(): Promise<void> {
   }
 }
 
+async function autoStartupFlow(): Promise<void> {
+  await ensureBridgeSilent();
+
+  if (!hasBaseUrl()) {
+    const url = await discoverHomeAssistant(useHaProxy);
+    if (url) {
+      dom.baseUrlInput.value = url;
+      persistConfigDraft();
+      updateHealthState();
+      writeLog(`Auto-discovered HA: ${url}`);
+    }
+  }
+
+  if (!hasRooms(state) && hasBaseUrl() && hasToken()) {
+    await loadRoomsFromHomeAssistantAction();
+  }
+
+  if (hasRooms(state) && bridgeReachability === "ok") {
+    await deployLampUi();
+  }
+}
+
 function getRoomLampSummary(room: Room): string {
   const lightLamps = room.lamps.filter((lamp) => getLampDomain(lamp) === "light");
   if (lightLamps.length > 0) {
@@ -939,17 +962,6 @@ async function handleGlassesSelection(rawIndex: number, itemName: string): Promi
   const normalizedItemName = itemName === "-" ? "" : itemName;
   const menuItems = getMenuItems();
   let idx = resolveMenuIndexFromEvent(rawIndex, normalizedItemName, menuItems);
-  // Some runtimes emit 1-based indices without item names. In root level this can
-  // mis-resolve the last room (e.g. "Scenes") as the trailing refresh action.
-  if (
-    state.glassesMenuLevel === "rooms" &&
-    !normalizedItemName &&
-    idx === menuItems.length - 1 &&
-    rawIndex - 1 >= 0 &&
-    rawIndex - 1 < state.rooms.length
-  ) {
-    idx = rawIndex - 1;
-  }
   writeLog(`resolved menu index: raw=${rawIndex}, resolved=${idx}, level=${state.glassesMenuLevel}`);
   if (idx < 0) return;
 
@@ -970,7 +982,7 @@ async function handleGlassesSelection(rawIndex: number, itemName: string): Promi
     saveAppState();
     if (room.lamps.length <= 1 && !isSceneRoom(room)) {
       state.glassesMenuLevel = "commands";
-      suppressCommandSelectionUntilTs = Date.now() + 800;
+      suppressCommandSelectionUntilTs = Date.now() + 400;
       startStateSync();
       await refreshVisibleLampStates(false);
     } else {
@@ -998,7 +1010,7 @@ async function handleGlassesSelection(rawIndex: number, itemName: string): Promi
     syncSelectors();
     saveAppState();
     state.glassesMenuLevel = "commands";
-    suppressCommandSelectionUntilTs = Date.now() + 800;
+    suppressCommandSelectionUntilTs = Date.now() + 400;
     startStateSync();
     await refreshVisibleLampStates(false);
     await renderGlassesMenuUi();
@@ -1183,6 +1195,24 @@ dom.saveBaseBtn.addEventListener("click", () =>
     await testHomeAssistantConnection();
   })
 );
+dom.discoverBtn.addEventListener("click", () =>
+  run(async () => {
+    setStatus(t("status.discovering"));
+    writeLog(t("status.discovering"));
+    const url = await discoverHomeAssistant(useHaProxy, writeLog);
+    if (url) {
+      dom.baseUrlInput.value = url;
+      persistConfigDraft();
+      updateHealthState();
+      writeLog(t("status.discovered", { url }));
+      setStatus(t("status.discovered", { url }));
+      await testHomeAssistantConnection();
+    } else {
+      writeLog(t("status.discoverFailed"));
+      setStatus(t("status.discoverFailed"));
+    }
+  })
+);
 dom.loadHaBtn.addEventListener("click", () => run(loadRoomsFromHomeAssistantAction));
 dom.loadHaEmptyBtn.addEventListener("click", () => run(loadRoomsFromHomeAssistantAction));
 
@@ -1198,5 +1228,4 @@ if (restoredState) {
 }
 
 writeLog(t("log.ready"));
-// Warm bridge in background so URL/token from SDK storage are available without manual connect first.
-void ensureBridgeSilent();
+void autoStartupFlow();
