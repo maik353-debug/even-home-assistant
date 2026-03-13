@@ -50,6 +50,7 @@ import {
   setHealthState as setHealthStateUi,
   setSetupStateVisible,
   setStatus as setStatusUi,
+  showWebToast as showWebToastUi,
   writeLog as writeLogUi,
 } from "./ui/webControls";
 import "./style.css";
@@ -191,6 +192,10 @@ function setBusy(value: boolean): void {
   setBusyUi(dom, value);
 }
 
+function showWebFeedback(text: string, durationMs = 1800): void {
+  showWebToastUi(dom, text, durationMs);
+}
+
 function refreshWebCommandButtons(): void {
   const commands = getEntityCommands(getSelectedLamp(state));
   renderCommandButtons(dom, commands, (cmd) => {
@@ -266,6 +271,10 @@ function getRoomCommands(room: Room | undefined): LampCommand[] {
     ...cmd,
     label: localizeCommandLabel(cmd.id, cmd.label),
   }));
+}
+
+function hasLightRooms(): boolean {
+  return state.rooms.some((room) => room.lamps.some((lamp) => getLampDomain(lamp) === "light"));
 }
 
 function isSceneRoom(room: Room | undefined): boolean {
@@ -718,6 +727,7 @@ function getRoomLampSummary(room: Room): string {
 function getMenuItems(): string[] {
   const selectedLamp = getSelectedLamp(state);
   const selectedRoom = getSelectedRoom(state);
+  const globalActions = hasLightRooms() ? [t("menu.allOff")] : [];
   return buildMenuItems(
     state.rooms,
     state.glassesMenuLevel,
@@ -726,7 +736,8 @@ function getMenuItems(): string[] {
     getEntityCommands(selectedLamp).map((x) => x.label),
     getRoomCommands(selectedRoom).map((x) => x.label),
     t("menu.refreshHa"),
-    getRoomLampSummary
+    getRoomLampSummary,
+    globalActions
   );
 }
 
@@ -817,6 +828,7 @@ async function executeSelectedCommand(cmd: LampCommand, source: "web" | "glasses
       haReachability = "bad";
       updateHealthState();
     }
+    showWebFeedback(`${cmd.label}: ${stateText}`, 1800);
     await showHeaderToast(`${cmd.label}: ${stateText}`, 1200);
   } catch (error) {
     const reason = toErrorText(error);
@@ -826,6 +838,7 @@ async function executeSelectedCommand(cmd: LampCommand, source: "web" | "glasses
     const result = `${lamp.label}: ${cmd.label} -> ${friendly}`;
     writeLog(`${result} (${reason})`);
     setStatus(result);
+    showWebFeedback(`${cmd.label}: ${friendly}`, 2200);
     await showHeaderToast(`${cmd.label}: ${friendly}`, 1600);
     void refreshSelectedLampState(true);
   } finally {
@@ -915,6 +928,7 @@ async function executeRoomCommand(cmd: LampCommand, source: "web" | "glasses"): 
       saveAppState();
       await renderHeaderStatus();
     }
+    showWebFeedback(`${cmd.label}: OK`, 1800);
     await showHeaderToast(`${cmd.label}: OK`, 1200);
     writeLog(`trigger[${source}] ${room.label} / ${cmd.label} -> OK (${targeted.length} entities)`);
     setStatus(`${room.label}: ${cmd.label} -> OK`);
@@ -931,6 +945,48 @@ async function executeRoomCommand(cmd: LampCommand, source: "web" | "glasses"): 
     );
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+async function executeGlobalAllOff(): Promise<void> {
+  if (!hasBaseUrl() || !hasToken()) return;
+  const allLights = state.rooms.flatMap((room) =>
+    room.lamps.filter((lamp) => getLampDomain(lamp) === "light" && !isLampUnavailable(lamp))
+  );
+  if (allLights.length === 0) return;
+  const entityIds = allLights.map((lamp) => lamp.pathPrefix);
+  const cmd: LampCommand = { id: "all_off", label: t("menu.allOff"), service: "turn_off" };
+  const request = buildHaRequestForEntityIds(getBaseUrl(), useHaProxy, "light", entityIds, cmd);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 9000);
+  try {
+    const response = await fetch(request.url, {
+      method: request.method,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify(request.body),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (response.ok) {
+      for (const lamp of allLights) state.lampStateCache[lamp.pathPrefix] = "OFF";
+      haReachability = "ok";
+      saveAppState();
+      updateHealthState();
+      await renderHeaderStatus();
+      showWebFeedback(t("toast.allOff"), 1800);
+      await showHeaderToast(t("toast.allOff"), 1200);
+      writeLog(`trigger[glasses] ${t("menu.allOff")} -> OK (${allLights.length} entities)`);
+      setStatus(`${t("menu.allOff")} -> OK`);
+    } else {
+      throw new Error(`HTTP ${response.status}`);
+    }
+  } catch (error) {
+    clearTimeout(timeout);
+    const reason = toErrorText(error);
+    const friendly = mapHaErrorToUserMessage(reason);
+    haReachability = "bad";
+    updateHealthState();
+    await notifyUser(t("status.roomCommandFailed"), `${t("menu.allOff")} (${reason})`, t("toast.errorPrefix", { text: friendly }), 2000);
   }
 }
 
@@ -972,6 +1028,11 @@ async function handleGlassesSelection(rawIndex: number, itemName: string): Promi
       await loadRoomsFromHomeAssistantAction();
       state.glassesMenuLevel = "rooms";
       await renderGlassesMenuUi();
+      return;
+    }
+    // Second-to-last item is "Alles aus" when light rooms are present.
+    if (hasLightRooms() && idx === menuItems.length - 2) {
+      await executeGlobalAllOff();
       return;
     }
     const room = state.rooms[idx];
@@ -1079,6 +1140,7 @@ async function loadRoomsFromHomeAssistantAction(): Promise<void> {
     const importedRooms = await loadRoomsFromHomeAssistantApi(getBaseUrl(), token, useHaProxy, {
       includeScenes: dom.includeScenesEl.checked,
       scenesGroupLabel: t("menu.scenesGroup"),
+      noAreaLabel: t("menu.noArea"),
     });
     applyRooms(importedRooms, { roomId: state.selectedRoomId, lampId: state.selectedLampId });
     haReachability = "ok";

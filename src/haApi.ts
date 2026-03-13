@@ -105,6 +105,7 @@ export async function discoverHomeAssistant(isLocalDev: boolean, onLog?: (msg: s
 }
 
 const SCENES_GROUP_TOKEN = "__EVEN_SCENES_GROUP__";
+const NO_AREA_TOKEN = "__EVEN_NO_AREA__";
 
 export function haApiUrl(baseUrl: string, isLocalDev: boolean, path: string): string {
   if (isLocalDev) return `/ha${path}`;
@@ -122,6 +123,8 @@ export function buildHaRequest(
   const body: Record<string, unknown> = { entity_id: lamp.pathPrefix };
   if (lamp.domain === "light" && cmd.brightnessPct !== undefined) {
     body.brightness_pct = cmd.brightnessPct;
+  } else if (lamp.domain === "light" && cmd.brightnessStepPct !== undefined) {
+    body.brightness_step_pct = cmd.brightnessStepPct;
   }
   return {
     method: "POST",
@@ -142,6 +145,8 @@ export function buildHaRequestForEntityIds(
   const body: Record<string, unknown> = { entity_id: entityIds };
   if (domain === "light" && cmd.brightnessPct !== undefined) {
     body.brightness_pct = cmd.brightnessPct;
+  } else if (domain === "light" && cmd.brightnessStepPct !== undefined) {
+    body.brightness_step_pct = cmd.brightnessStepPct;
   }
   return {
     method: "POST",
@@ -180,17 +185,18 @@ export async function loadRoomsFromHomeAssistant(
   baseUrl: string,
   token: string,
   isLocalDev: boolean,
-  options?: { includeScenes?: boolean; scenesGroupLabel?: string }
+  options?: { includeScenes?: boolean; scenesGroupLabel?: string; noAreaLabel?: string }
 ): Promise<Room[]> {
   const includeScenes = options?.includeScenes === true;
   const scenesGroupLabel = options?.scenesGroupLabel?.trim() || "Scenes";
+  const noAreaLabel = options?.noAreaLabel?.trim() || "No room";
   const blocks = [
     `{% for e in states.light %}`,
     `{% if e.attributes.entity_id is not defined %}`,
     `{% set ns.items = ns.items + [ {
   "entity_id": e.entity_id,
   "name": e.name,
-  "area": area_name(e.entity_id) if area_name(e.entity_id) else "Ohne Raum",
+  "area": area_name(e.entity_id) if area_name(e.entity_id) else "${NO_AREA_TOKEN}",
   "state": e.state
 } ] %}`,
     `{% endif %}`,
@@ -235,7 +241,7 @@ ${blocks.join("\n")}
     throw new Error("Unexpected template response");
   }
 
-  const byArea = new Map<string, { label: string; lamps: Lamp[]; isScenesGroup: boolean }>();
+  const byArea = new Map<string, { label: string; lamps: Lamp[]; isScenesGroup: boolean; isNoArea: boolean }>();
   for (const item of parsed) {
     if (!item || typeof item !== "object") continue;
     const row = item as { entity_id?: unknown; name?: unknown; area?: unknown; state?: unknown };
@@ -243,14 +249,15 @@ ${blocks.join("\n")}
     const domainRaw = row.entity_id.split(".")[0];
     const domain: EntityDomain =
       domainRaw === "light" || domainRaw === "scene" ? domainRaw : "light";
-    const areaLabelRaw = typeof row.area === "string" && row.area.trim() ? row.area.trim() : "Ohne Raum";
+    const areaLabelRaw = typeof row.area === "string" && row.area.trim() ? row.area.trim() : NO_AREA_TOKEN;
     const isScenesGroup = areaLabelRaw === SCENES_GROUP_TOKEN;
-    const areaKey = isScenesGroup ? SCENES_GROUP_TOKEN : areaLabelRaw;
-    const areaLabel = isScenesGroup ? scenesGroupLabel : areaLabelRaw;
+    const isNoArea = areaLabelRaw === NO_AREA_TOKEN;
+    const areaKey = isScenesGroup ? SCENES_GROUP_TOKEN : isNoArea ? NO_AREA_TOKEN : areaLabelRaw;
+    const areaLabel = isScenesGroup ? scenesGroupLabel : isNoArea ? noAreaLabel : areaLabelRaw;
     const rawState = String(row.state ?? "unknown").toLowerCase();
     const normalizedState =
       rawState === "on" ? "ON" : rawState === "off" ? "OFF" : rawState === "unavailable" ? "UNAVAILABLE" : rawState.toUpperCase();
-    const bucket = byArea.get(areaKey) ?? { label: areaLabel, lamps: [], isScenesGroup };
+    const bucket = byArea.get(areaKey) ?? { label: areaLabel, lamps: [], isScenesGroup, isNoArea };
     bucket.lamps.push({
       id: normalizeId(row.entity_id),
       label: row.name,
@@ -268,7 +275,7 @@ ${blocks.join("\n")}
       return a.label.localeCompare(b.label, "de");
     })
     .map((bucket) => ({
-      id: bucket.isScenesGroup ? "scenes_group" : normalizeId(bucket.label),
+      id: bucket.isScenesGroup ? "scenes_group" : bucket.isNoArea ? "no_area" : normalizeId(bucket.label),
       label: bucket.label,
       lamps: bucket.lamps
         .sort((a, b) => a.label.localeCompare(b.label, "de"))

@@ -18,6 +18,7 @@ export type WebDom = {
   roomSelectEl: HTMLSelectElement;
   lampSelectEl: HTMLSelectElement;
   commandActionsEl: HTMLDivElement;
+  webToastEl: HTMLDivElement;
 };
 
 function mustQuery<T extends Element>(selector: string): T {
@@ -82,6 +83,11 @@ export function initWebUi(app: HTMLDivElement): WebDom {
     </main>
   `;
 
+  const webToast = document.createElement("div");
+  webToast.id = "web-toast";
+  webToast.className = "web-toast hidden";
+  document.body.appendChild(webToast);
+
   return {
     statusEl: mustQuery<HTMLDivElement>("#status"),
     healthEl: mustQuery<HTMLDivElement>("#health"),
@@ -99,6 +105,7 @@ export function initWebUi(app: HTMLDivElement): WebDom {
     roomSelectEl: mustQuery<HTMLSelectElement>("#room-select"),
     lampSelectEl: mustQuery<HTMLSelectElement>("#lamp-select"),
     commandActionsEl: mustQuery<HTMLDivElement>("#command-actions"),
+    webToastEl: webToast,
   };
 }
 
@@ -199,4 +206,21 @@ export function renderCommandButtons(
     btn.addEventListener("click", () => onCommand(cmd));
     dom.commandActionsEl.appendChild(btn);
   }
+}
+
+let webToastTimer: ReturnType<typeof setTimeout> | null = null;
+let webToastFadeTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function showWebToast(dom: WebDom, text: string, durationMs = 1800): void {
+  if (webToastTimer !== null) { clearTimeout(webToastTimer); webToastTimer = null; }
+  if (webToastFadeTimer !== null) { clearTimeout(webToastFadeTimer); webToastFadeTimer = null; }
+  dom.webToastEl.textContent = text;
+  dom.webToastEl.classList.remove("hidden", "hiding");
+  webToastTimer = setTimeout(() => {
+    dom.webToastEl.classList.add("hiding");
+    webToastFadeTimer = setTimeout(() => {
+      dom.webToastEl.classList.add("hidden");
+      dom.webToastEl.classList.remove("hiding");
+    }, 300);
+  }, durationMs);
 }

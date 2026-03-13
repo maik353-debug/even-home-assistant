@@ -18,13 +18,15 @@ export function getGlassesMenuItems(
   commandLabels: string[],
   roomCommandLabels: string[] = [],
   refreshLabel = t("menu.refreshHa"),
-  roomSummaryLabel?: (room: Room) => string
+  roomSummaryLabel?: (room: Room) => string,
+  globalActions: string[] = []
 ): string[] {
   if (level === "rooms") {
     const items = rooms.map((room) => formatRoomListItem(room.label, roomSummaryLabel?.(room) ?? ""));
     if (rooms.length === 0) {
       items.push(t("menu.noRooms"));
     }
+    for (const action of globalActions) items.push(action);
     items.push(refreshLabel);
     return items;
   }
